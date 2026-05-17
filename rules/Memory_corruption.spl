@@ -1,0 +1,22 @@
+index = *
+((EventCode IN (10, 8, 25) SourceId="Microsoft-Windows-Sysmon") OR (Type IN (OBJ_PID, PTRACE) OR "ptrace" OR "process-vm-readv"))
+| eval payload = lower(coalesce(CommandLine, process, TargetImage, message, _raw))
+| rex field=payload "(?<keyword>procdump|mimikatz|dumpert|lsass|nanodump|out-minidump|\/dev\/mem|gdb|strace|memdump)"
+| where isnotnull(keyword) 
+    OR EventCode=8 
+    OR EventCode=10 
+    OR EventCode=25 
+    OR match(payload, "ptrace|process_vm_writev")
+| eval memory_attack_type = case(
+    EventCode==8, "CreateRemoteThread (Process Injection)",
+    EventCode==10 AND match(payload, "lsass"), "LSASS Memory Dump (Credential Theft)",
+    EventCode==10, "ProcessAccess (Potential Memory Read/Write)",
+    EventCode==25, "Process Tampering (Process Hollowing/Herpaderping)",
+    match(payload, "ptrace|gdb|strace"), "Linux Ptrace / Process Debugging",
+    match(payload, "\/dev\/mem"), "Direct Physical Memory Access (Linux)",
+    match(payload, "procdump|mimikatz|nanodump"), "Known Memory Dumping Tool Detected",
+    1=1, "Suspicious Memory Manipulation"
+)
+| stats count min(_time) as first_seen max(_time) as last_seen values(payload) as detected_details by host, SourceImage, TargetImage, memory_attack_type
+| where count > 0
+| sort - count
