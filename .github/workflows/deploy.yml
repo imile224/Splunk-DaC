@@ -15,15 +15,14 @@ jobs:
       - name: API Call to Splunk
         run: |
           for file in rules/*.spl; do
-            # Fayl adından qayda adını çıxarırıq (məsələn: Persistence_Detectin)
-            rule_name=$(basename "$file" .spl)
+            # Eğer eşleşen dosya yoksa döngünün hata vermeden geçmesini sağlar
+            [ -e "$file" ] || continue
             
-            # SPL kuralını oxuyuruq
+            rule_name=$(basename "$file" .spl)
             search_query=$(cat "$file")
             
             echo "Deploying rule: $rule_name via API..."
             
-            # Splunk API üçün kuralı təhlükəsiz şəkildə URL-encode edirik
             curl -k -X POST "https://${{ secrets.SPLUNK_HOST }}:8089/services/saved/searches" \
               -H "Authorization: Bearer ${{ secrets.SPLUNK_TOKEN }}" \
               -H "Content-Type: application/x-www-form-urlencoded" \
