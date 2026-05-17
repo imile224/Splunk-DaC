@@ -1,0 +1,5 @@
+index=* sourcetype="WinEventLog:Security" EventCode=4728
+| search Group_Name="*Admins*" OR Group_Name="*Administrators*" OR Group_Name="*Account Operators*" OR Group_Name="*Backup Operators*"
+| stats count min(_time) as first_seen max(_time) as last_seen values(Account_Name) as targets_and_admins by ComputerName Group_Name
+| eval severity="Critical - Privilege Escalation Detected"
+| table first_seen last_seen ComputerName Group_Name targets_and_admins severity count
