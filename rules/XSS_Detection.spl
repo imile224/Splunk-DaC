@@ -1,0 +1,5 @@
+index=idx_web
+| eval decoded_payload = lower(urldecode(_raw))
+| rex field=decoded_payload max_match=0 "(?<xss_pattern>(?:<|%3c)\s*(?:script|iframe|img|svg|body|html|style|base|object|embed|applet)|javascript:|vbscript:|data:text\/html|onload\s*=|onerror\s*=|onmouseover\s*=|onfocus\s*=|prompt\s*\(|confirm\s*\(|alert\s*\(|eval\s*\(|document\.cookie|document\.write|window\.location)"
+| where isnotnull(xss_pattern)
+| table _time, xss_pattern, decoded_payload
